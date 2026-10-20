@@ -1,4 +1,4 @@
-package de.schifferstadt.explore;
+package de.schifferstadt.sops;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -23,6 +23,14 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().getDecorView().setSystemUiVisibility(
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -50,7 +58,7 @@ public final class MainActivity extends Activity {
                     return new WebResourceResponse(mime(path), "UTF-8", 200, "OK",
                         Collections.singletonMap("X-Content-Type-Options", "nosniff"), stream);
                 } catch (IOException error) {
-                    return response(404, "Not Found", "text/html", "<!doctype html><html lang='de'><meta name='viewport' content='width=device-width'><title>Datei fehlt</title><body style='font:18px sans-serif;padding:32px'><h1>Stadtdaten fehlen</h1><p>Die mitgelieferten App-Dateien sind unvollständig. Bitte die App mit dem vollständigen dist-Ordner neu bauen.</p></body></html>");
+                    return response(404, "Not Found", "text/html", "<!doctype html><html lang='de'><meta name='viewport' content='width=device-width'><title>Datei fehlt</title><body style='font:18px sans-serif;padding:32px'><h1>Spieldateien fehlen</h1><p>Die mitgelieferten App-Dateien sind unvollständig. Bitte die App mit dem vollständigen dist-Ordner neu bauen.</p></body></html>");
                 }
             }
         });

@@ -24,33 +24,35 @@ jobs:
           gradle-version: '8.9'
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Bundle real city data and Three.js
+      - name: Bundle offline 3D renderer
         shell: bash
         run: |
           for attempt in 1 2 3; do
             if python3 tools/prepare-assets.py; then exit 0; fi
           done
           exit 1
+      - name: Validate both arena layouts
+        run: node tools/validate-maps.mjs
       - name: Build installable APK
         working-directory: android
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Verify APK signature and metadata
         run: |
           mkdir -p output
-          cp android/app/build/outputs/apk/debug/app-debug.apk output/Schifferstadt-Entdecker.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Schifferstadt-Entdecker.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Schifferstadt-Entdecker.apk > output/package-info.txt
-          sha256sum output/Schifferstadt-Entdecker.apk > output/SHA256SUMS.txt
+          cp android/app/build/outputs/apk/debug/app-debug.apk output/Schifferstadt-SOPS.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Schifferstadt-SOPS.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Schifferstadt-SOPS.apk > output/package-info.txt
+          sha256sum output/Schifferstadt-SOPS.apk > output/SHA256SUMS.txt
       - name: Install browser test tools
         run: |
           python3 -m pip install playwright==1.55.0
           python3 -m playwright install --with-deps chromium
-      - name: Test offline 3D and touch interface
+      - name: Test offline gameplay and touch controls
         run: python3 tools/smoke-test.py
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: Schifferstadt-Android-APK
+          name: Schifferstadt-SOPS-APK
           path: output/
           if-no-files-found: error
           retention-days: 30
@@ -58,7 +60,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Schifferstadt-QA
+          name: Schifferstadt-SOPS-QA
           path: qa/
           if-no-files-found: ignore
           retention-days: 14

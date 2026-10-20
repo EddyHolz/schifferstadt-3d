@@ -15,7 +15,7 @@ jobs:
       - name: Download verified APK
         uses: actions/download-artifact@v4
         with:
-          name: Schifferstadt-Android-APK
+          name: Schifferstadt-SOPS-APK
           path: apk
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
@@ -28,5 +28,5 @@ jobs:
           BUILD_URL: ${{ github.event.workflow_run.html_url }}
         shell: bash
         run: |
-          printf '%s\n' 'Installierbare Android-Vorabversion (Android 8+ mit WebGL2).' '' 'Enthält echte OpenStreetMap-Geometrie für den Innenstadtbereich von Schifferstadt, Offline-Karte, Spaziermodus, Vogelperspektive, simulierte Tageszeit und lokale Lieblingsorte.' '' 'APK gebaut und Signatur geprüft. Offline-3D und Bedienung im mobilen Browser automatisch getestet. Kein Test auf einem physischen Android-Gerät. Schematische Gebäude mit teils geschätzten Höhen; keine fotorealistischen Straßenaufnahmen.' '' 'APK ist für die direkte Installation mit einem Entwicklungsschlüssel signiert. Für spätere Builds kann eine Deinstallation vor der Neuinstallation erforderlich sein.' '' "Build: $BUILD_URL" > notes.md
-          gh release create "android-$BUILD_NUMBER" apk/Schifferstadt-Entdecker.apk apk/SHA256SUMS.txt apk/package-info.txt --target "$BUILD_COMMIT" --title "Schifferstadt Entdecker – Android $BUILD_NUMBER" --notes-file notes.md --prerelease
+          printf '%s\n' 'S-OPS: installierbarer Android-Ego-Shooter-Prototyp (Android 8+ mit WebGL2), offline im Querformat.' '' 'Zwei frei entworfene Arenen Nordcampus und Südcampus mit Schifferstadt-Bezug. Keine Nachbildung realer Schulen. 120-Sekunden-Matches gegen fünf Trainingsroboter, Kontrollpunkt, zwei Waffen, Visier, Nachladen, Regeneration und Respawns.' '' 'APK gebaut und Signatur geprüft. Wege durch beide Maps sowie Offline-Spielstart, Schießen, Nachladen, Bewegung, Visier, Pause und Mapwechsel automatisch getestet. Kein Test auf einem physischen Android-Gerät. Eigenständige synthetische 3D-Grafik; keine CoD-Assets oder MW2-Grafikqualität. Kein Online-Multiplayer.' '' 'APK ist für die direkte Installation mit einem Entwicklungsschlüssel signiert. Für spätere Builds kann eine Deinstallation vor der Neuinstallation erforderlich sein.' '' "Build: $BUILD_URL" > notes.md
+          gh release create "sops-$BUILD_NUMBER" apk/Schifferstadt-SOPS.apk apk/SHA256SUMS.txt apk/package-info.txt --target "$BUILD_COMMIT" --title "S-OPS Schifferstadt – Android $BUILD_NUMBER" --notes-file notes.md --prerelease
