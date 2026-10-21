@@ -1,0 +1,21 @@
+name: Official aerial image reference
+on:
+  push:
+    branches: [main]
+    paths: ['tools/prepare-orthophotos.py', '.github/workflows/orthophoto-research.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  aerial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve licensed official aerial reference
+        run: python3 tools/prepare-orthophotos.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-DOP20-site-reference
+          path: dist/orthophotos/
+          if-no-files-found: error
