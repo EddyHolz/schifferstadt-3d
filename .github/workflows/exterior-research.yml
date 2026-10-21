@@ -1,0 +1,21 @@
+name: Exterior reference research
+on:
+  push:
+    branches: [main]
+    paths: ['tools/fetch-map-references.py', '.github/workflows/exterior-research.yml']
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve primary exterior references and OSM footprints
+        run: python3 tools/fetch-map-references.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: school-exterior-references
+          path: dist/data/school-reference.json
+          if-no-files-found: ignore

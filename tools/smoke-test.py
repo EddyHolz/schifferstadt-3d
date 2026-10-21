@@ -4,18 +4,25 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
-import json
+import json,os,base64,mimetypes
+from urllib.parse import urlparse,unquote
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1];qa=ROOT/'qa';qa.mkdir(exist_ok=True)
-server=ThreadingHTTPServer(('127.0.0.1',0),partial(SimpleHTTPRequestHandler,directory=str(ROOT/'dist')))
-Thread(target=server.serve_forever,daemon=True).start()
+BASE='https://sops.test/'
+def local_route(route):
+ url=urlparse(route.request.url)
+ if url.scheme!='https' or url.netloc!='sops.test':return route.abort()
+ name=unquote(url.path).lstrip('/') or 'index.html';path=(ROOT/'dist'/name).resolve()
+ if not path.is_relative_to((ROOT/'dist').resolve()) or not path.is_file():return route.fulfill(status=404,body='Missing bundled asset')
+ mime='text/javascript' if path.suffix in ('.js','.mjs') else mimetypes.guess_type(str(path))[0] or 'application/octet-stream'
+ route.fulfill(status=200,body=path.read_bytes(),content_type=mime)
 try:
  with sync_playwright() as p:
-  browser=p.chromium.launch(args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+  browser=p.chromium.launch(executable_path=os.environ.get('SOPS_CHROMIUM'),args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
   context=browser.new_context(viewport={'width':915,'height':412},device_scale_factor=1,is_mobile=True,has_touch=True)
-  context.route('**/*',lambda route:route.continue_() if route.request.url.startswith('http://127.0.0.1:') else route.abort())
+  context.route('**/*',local_route)
   page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
-  page.goto(f'http://127.0.0.1:{server.server_port}',wait_until='domcontentloaded')
+  page.goto(BASE,wait_until='domcontentloaded')
   try:
    page.wait_for_function("window.__sops && !document.querySelector('#start').disabled",timeout=60000)
    page.screenshot(path=str(qa/'01-menu.png'))
@@ -40,7 +47,34 @@ try:
    page.mouse.move(500,180);page.mouse.down();page.mouse.move(570,180,steps=6);page.mouse.up()
    assert abs(page.evaluate('__sops.getDebugState().yaw')-yaw)>.1
    page.locator('#aim').tap();assert 'active' in page.locator('#aim').get_attribute('class')
+   page.wait_for_function('__sops.getDebugState().aiming && __sops.getDebugState().fov<52',timeout=8000)
+   page.wait_for_function('__sops.getDebugState().weaponProjection && !__sops.getDebugState().weaponProjection.centerOccluded',timeout=8000)
    page.screenshot(path=str(qa/'02-south-gameplay.png'))
+   page.locator('#aim').tap()
+   # Real two-contact touch events, not a sequence of independent taps.
+   client=context.new_cdp_session(page)
+   def tp(i,x,y): return {'id':i,'x':x,'y':y,'radiusX':3,'radiusY':3,'force':1}
+   def touch(kind,points): client.send('Input.dispatchTouchEvent',{'type':kind,'touchPoints':points})
+   pad=page.locator('#joystick').bounding_box();jx=pad['x']+pad['width']/2;jy=pad['y']+pad['height']/2
+   left=tp(11,jx,jy-35);right=tp(22,520,170)
+   touch('touchStart',[left]);touch('touchStart',[left,right]);touch('touchMove',[left,tp(22,560,175)])
+   page.wait_for_function('__sops.getDebugState().input.forward>.85 && __sops.getDebugState().sprinting',timeout=5000)
+   touch('touchEnd',[left]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
+   fire=page.locator('#fire').bounding_box();fx=fire['x']+fire['width']/2;fy=fire['y']+fire['height']/2
+   shots=page.evaluate('__sops.getDebugState().shotsFired');yaw_before=page.evaluate('__sops.getDebugState().yaw')
+   touch('touchStart',[left,tp(22,fx,fy)]);touch('touchMove',[left,tp(22,fx+35,fy-10)])
+   page.wait_for_function('(n)=>__sops.getDebugState().shotsFired>n && __sops.getDebugState().input.forward>.85 && __sops.getDebugState().input.fire',arg=shots,timeout=5000)
+   assert abs(page.evaluate('__sops.getDebugState().yaw')-yaw_before)>.05,'Fire drag failed to look while moving'
+   assert not page.evaluate('__sops.getDebugState().sprinting'),'Firing should reduce sprint to normal movement'
+   touch('touchEnd',[left]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
+   assert not page.evaluate('__sops.getDebugState().input.fire')
+   touch('touchEnd',[])
+   assert page.evaluate('Math.abs(__sops.getDebugState().input.forward)')<.01
+   # Sprint latch is a tap, so the left thumb can stay on the stick.
+   page.locator('#sprint').tap();touch('touchStart',[tp(11,jx,jy-20)])
+   page.wait_for_function('__sops.getDebugState().sprinting',timeout=3000);touch('touchEnd',[])
+   page.locator('#sprint').tap()
+
    page.locator('#pause').tap();page.wait_for_function('__sops.getState().phase==="paused"')
    stopped=page.evaluate('__sops.getState().time');page.wait_for_timeout(900)
    assert page.evaluate('__sops.getState().time')==stopped
@@ -53,10 +87,15 @@ try:
    page.screenshot(path=str(qa/'03-north-gameplay.png'))
    diagnostics=page.evaluate('__sops.getDebugState()')
    assert not errors,errors
-   (qa/'report.json').write_text(json.dumps({'result':'passed','tests':['offline boot','both arena starts','two loadouts','five bot agents','firing ammo','timed reload','joystick movement','look drag','aim','pause freeze/resume','map switch reset'],'diagnostics':diagnostics,'android_device_test':False},ensure_ascii=False,indent=2))
+   (qa/'report.json').write_text(json.dumps({'result':'passed','tests':['offline boot','both arena starts','two loadouts','five bot agents','firing ammo','timed reload','joystick movement','look drag','aim','pause freeze/resume','map switch reset','ADS center unobstructed','two finger move sprint look','fire drag while moving','independent contact release','sprint latch'],'diagnostics':diagnostics,'android_device_test':False},ensure_ascii=False,indent=2))
   except Exception:
    page.screenshot(path=str(qa/'failure.png'))
    (qa/'errors.json').write_text(json.dumps({'errors':errors,'state':page.evaluate('window.__sops?__sops.getState():null'),'boot':page.locator('#boot-status').inner_text()},ensure_ascii=False))
    raise
-  finally:browser.close()
-finally:server.shutdown()
+  finally:
+   for image_path in sorted(qa.glob('*.png')):
+    # Playwright screenshots are QA evidence, not source-image modification.
+    print('QA_FILE='+image_path.name,flush=True)
+   print('QA_REPORT='+json.dumps({'errors':errors,'state':page.evaluate('window.__sops?__sops.getState():null')}),flush=True)
+   browser.close()
+finally:pass
