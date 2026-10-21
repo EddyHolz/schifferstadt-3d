@@ -31,6 +31,8 @@ jobs:
             if python3 tools/prepare-assets.py; then exit 0; fi
           done
           exit 1
+      - name: Bundle verified photographic material maps and HDRI
+        run: python3 tools/prepare-visual-assets.py
       - name: Validate both arena layouts
         run: node tools/validate-maps.mjs
       - name: Build installable APK

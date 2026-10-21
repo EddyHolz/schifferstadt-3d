@@ -62,7 +62,7 @@ def geocode(school,candidates):
     matching=[]
     for e in candidates:
         name=e.get('tags',{}).get('name','').casefold()
-        if 'grundschule' in name and ('nord' if school['id']=='north' else 'süd') in name and coord(e): matching.append(e)
+        if ('grundschule' in name or 'schule' in name or name.startswith('gs ')) and ('nord' if school['id']=='north' else 'süd') in name and coord(e): matching.append(e)
     if len(matching)==1:
         e=matching[0]
         return coord(e),{'method':'OSM named school feature','osmType':e['type'],'osmId':e['id'],'tags':{k:v for k,v in e.get('tags',{}).items() if k in KEEP}}
@@ -77,6 +77,14 @@ def geocode(school,candidates):
         road=address.get('road','').casefold().replace('strasse','straße')
         if road != school['street'].casefold(): continue
         return {'lat':float(item['lat']),'lon':float(item['lon'])},{'method':'Nominatim exact street and house number','displayName':item.get('display_name'),'osmType':item.get('osm_type'),'osmId':item.get('osm_id')}
+    time.sleep(1.1)
+    query=urllib.parse.urlencode({'q':school['name']+' Schifferstadt','format':'jsonv2','addressdetails':1,'limit':5,'bounded':1,'viewbox':'8.33,49.43,8.42,49.35'})
+    named=json.loads(fetch('https://nominatim.openstreetmap.org/search?'+query))
+    print('GEOCODE_CANDIDATES_'+school['id'].upper()+'='+json.dumps(named,ensure_ascii=False),flush=True)
+    verified=[x for x in named if x.get('type')=='school' and ('nord' if school['id']=='north' else 'süd') in x.get('display_name','').lower()]
+    if len(verified)==1:
+        item=verified[0]
+        return {'lat':float(item['lat']),'lon':float(item['lon'])},{'method':'Nominatim uniquely named school, public address pending footprint cross-check','displayName':item.get('display_name'),'osmType':item.get('osm_type'),'osmId':item.get('osm_id')}
     raise RuntimeError('No unambiguous school feature or verified address geocode for '+school['name'])
 
 def geometry(data,origin):
@@ -108,6 +116,7 @@ def geometry(data,origin):
 def main():
     stamp=datetime.datetime.now(datetime.timezone.utc).isoformat()
     candidates=overpass('[out:json][timeout:60];nwr[amenity=school]('+CITY_BBOX+');out tags center;')['elements']
+    print('OSM_SCHOOL_CANDIDATES='+json.dumps(candidates,ensure_ascii=False),flush=True)
     result={'retrievedAt':stamp,'status':'public-reference-data-not-verified-exact-reconstruction',
             'license':{'osm':'ODbL 1.0; © OpenStreetMap contributors','officialImages':'Rights not assumed; metadata/links only'},
             'coordinateSystem':'local metres; x east, z south; origins geocoded from public OSM/address data',

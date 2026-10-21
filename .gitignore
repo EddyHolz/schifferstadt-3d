@@ -10,3 +10,6 @@ qa/
 output/
 dist/data/city.json
 dist/vendor/THREE-LICENSE.txt
+
+dist/textures/
+dist/data/school-reference.json

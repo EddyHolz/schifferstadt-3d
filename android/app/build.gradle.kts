@@ -19,7 +19,7 @@ android {
 val verifyGameAssets by tasks.registering {
     doLast {
         val dist = project.file("../../dist")
-        val required = listOf("index.html", "app.js", "app.css", "fps-engine.js", "maps.js", "vendor/THREE-LICENSE.txt")
+        val required = listOf("index.html", "app.js", "app.css", "fps-engine.js", "maps.js", "vendor/THREE-LICENSE.txt", "vendor/RGBELoader.js", "textures/manifest.json", "textures/LICENSE.txt", "textures/sky.hdr")
         check(required.all { dist.resolve(it).isFile && dist.resolve(it).length() > 0 }) {
             "Game assets incomplete. Restore dist/ and run python3 ../tools/prepare-assets.py."
         }

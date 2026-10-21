@@ -23,6 +23,7 @@ try:
   context.route('**/*',local_route)
   page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto(BASE,wait_until='domcontentloaded')
+  page.evaluate("window.__touchEvents=[];for(const t of ['pointerdown','pointerup','pointercancel','lostpointercapture'])document.addEventListener(t,e=>window.__touchEvents.push([e.type,e.pointerId,e.target.id,e.clientX,e.clientY]),true)")
   try:
    page.wait_for_function("window.__sops && !document.querySelector('#start').disabled",timeout=60000)
    page.screenshot(path=str(qa/'01-menu.png'))
@@ -49,7 +50,7 @@ try:
    page.locator('#aim').tap();assert 'active' in page.locator('#aim').get_attribute('class')
    page.wait_for_function('__sops.getDebugState().aiming && __sops.getDebugState().fov<52',timeout=8000)
    page.wait_for_function('__sops.getDebugState().weaponProjection && !__sops.getDebugState().weaponProjection.centerOccluded',timeout=8000)
-   page.screenshot(path=str(qa/'02-south-gameplay.png'))
+   page.screenshot(path=str(qa/'02-south-gameplay.png'));page.screenshot(path=str(qa/'02-south-gameplay.jpg'),type='jpeg',quality=65)
    page.locator('#aim').tap()
    # Real two-contact touch events, not a sequence of independent taps.
    client=context.new_cdp_session(page)
@@ -59,14 +60,14 @@ try:
    left=tp(11,jx,jy-35);right=tp(22,520,170)
    touch('touchStart',[left]);touch('touchStart',[left,right]);touch('touchMove',[left,tp(22,560,175)])
    page.wait_for_function('__sops.getDebugState().input.forward>.85 && __sops.getDebugState().sprinting',timeout=5000)
-   touch('touchEnd',[left]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
+   touch('touchEnd',[tp(22,560,175)]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
    fire=page.locator('#fire').bounding_box();fx=fire['x']+fire['width']/2;fy=fire['y']+fire['height']/2
    shots=page.evaluate('__sops.getDebugState().shotsFired');yaw_before=page.evaluate('__sops.getDebugState().yaw')
    touch('touchStart',[left,tp(22,fx,fy)]);touch('touchMove',[left,tp(22,fx+35,fy-10)])
    page.wait_for_function('(n)=>__sops.getDebugState().shotsFired>n && __sops.getDebugState().input.forward>.85 && __sops.getDebugState().input.fire',arg=shots,timeout=5000)
    assert abs(page.evaluate('__sops.getDebugState().yaw')-yaw_before)>.05,'Fire drag failed to look while moving'
    assert not page.evaluate('__sops.getDebugState().sprinting'),'Firing should reduce sprint to normal movement'
-   touch('touchEnd',[left]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
+   touch('touchEnd',[tp(22,fx+35,fy-10)]);assert page.evaluate('__sops.getDebugState().input.forward')>.85
    assert not page.evaluate('__sops.getDebugState().input.fire')
    touch('touchEnd',[])
    assert page.evaluate('Math.abs(__sops.getDebugState().input.forward)')<.01
@@ -84,18 +85,21 @@ try:
    assert page.evaluate('__sops.getState().ammo')==30
    assert page.evaluate('__sops.getState().kills')==0
    assert page.evaluate('__sops.getDebugState().colliders')>=10
-   page.screenshot(path=str(qa/'03-north-gameplay.png'))
+   page.screenshot(path=str(qa/'03-north-gameplay.png'));page.screenshot(path=str(qa/'03-north-gameplay.jpg'),type='jpeg',quality=65)
    diagnostics=page.evaluate('__sops.getDebugState()')
    assert not errors,errors
    (qa/'report.json').write_text(json.dumps({'result':'passed','tests':['offline boot','both arena starts','two loadouts','five bot agents','firing ammo','timed reload','joystick movement','look drag','aim','pause freeze/resume','map switch reset','ADS center unobstructed','two finger move sprint look','fire drag while moving','independent contact release','sprint latch'],'diagnostics':diagnostics,'android_device_test':False},ensure_ascii=False,indent=2))
   except Exception:
-   page.screenshot(path=str(qa/'failure.png'))
-   (qa/'errors.json').write_text(json.dumps({'errors':errors,'state':page.evaluate('window.__sops?__sops.getState():null'),'boot':page.locator('#boot-status').inner_text()},ensure_ascii=False))
+   page.screenshot(path=str(qa/'failure.png'));page.screenshot(path=str(qa/'failure.jpg'),type='jpeg',quality=65)
+   (qa/'errors.json').write_text(json.dumps({'errors':errors,'state':page.evaluate('window.__sops?__sops.getState():null'),'boot':page.locator('#boot-status').inner_text(),'debug':page.evaluate('window.__sops?__sops.getDebugState():null'),'touchEvents':page.evaluate('window.__touchEvents||[]')},ensure_ascii=False))
    raise
   finally:
    for image_path in sorted(qa.glob('*.png')):
     # Playwright screenshots are QA evidence, not source-image modification.
     print('QA_FILE='+image_path.name,flush=True)
+   for image_path in sorted(qa.glob('*.jpg')):
+    print('QA_IMAGE:'+image_path.stem+':'+base64.b64encode(image_path.read_bytes()).decode(),flush=True)
+   print('QA_DEBUG='+json.dumps({'debug':page.evaluate('window.__sops?__sops.getDebugState():null'),'touchEvents':page.evaluate('window.__touchEvents||[]')}),flush=True)
    print('QA_REPORT='+json.dumps({'errors':errors,'state':page.evaluate('window.__sops?__sops.getState():null')}),flush=True)
    browser.close()
 finally:pass
