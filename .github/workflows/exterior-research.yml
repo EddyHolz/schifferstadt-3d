@@ -13,13 +13,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Retrieve primary exterior references and OSM footprints
         run: python3 tools/fetch-map-references.py
-      - name: Inspect official RLP LoD2 tile index
-        run: python3 tools/fetch-lod2-reference.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: school-exterior-references
-          path: |
-            dist/data/school-reference.json
-            dist/data/lod2-reference-config.json
+          path: dist/data/school-reference.json
+          if-no-files-found: ignore
+  lod2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect official RLP LoD2 tile index independently of OSM
+        run: python3 tools/fetch-lod2-reference.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: official-lod2-reference-index
+          path: dist/data/lod2-reference-config.json
           if-no-files-found: ignore

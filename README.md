@@ -1,5 +1,7 @@
 # S-OPS · Schifferstadt Arenas
 
+**Qualität nicht abgenommen.** Die Veröffentlichung neuer APKs ist gesperrt, bis visuelle Qualität und echte Außenrekonstruktionen nachgewiesen sind. Fortschritt und offene Lücken: [Qualitätsprüfung](docs/QUALITY-REVIEW.md). Die bisherigen Release-Maps sind fiktiv und erfüllen den geforderten exakten Schulnachbau nicht.
+
 Eigenständiger Android-Arcade-Ego-Shooter-Prototyp. Zwei **frei entworfene** Trainingsarenen mit lokalem Namensbezug: Nordcampus und Südcampus. Keine geografisch genaue Darstellung oder Grundrisse realer Schulen, keine CoD-Assets. Eigenständige synthetische Grafik, kein AAA-/MW2-Grafikniveau.
 
 ## Spielen
