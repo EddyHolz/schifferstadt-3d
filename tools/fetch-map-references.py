@@ -63,6 +63,10 @@ def geocode(school,candidates):
     for e in candidates:
         name=e.get('tags',{}).get('name','').casefold()
         if ('grundschule' in name or 'schule' in name or name.startswith('gs ')) and ('nord' if school['id']=='north' else 'süd') in name and coord(e): matching.append(e)
+    exact=[e for e in matching if e.get('tags',{}).get('addr:street','').casefold()==school['street'].casefold() and e.get('tags',{}).get('addr:housenumber')==school['number']]
+    if len(exact)==1:
+        e=exact[0]
+        return coord(e),{'method':'OSM school feature with exact official street and house number','osmType':e['type'],'osmId':e['id'],'tags':{k:v for k,v in e.get('tags',{}).items() if k in KEEP}}
     if len(matching)==1:
         e=matching[0]
         return coord(e),{'method':'OSM named school feature','osmType':e['type'],'osmId':e['id'],'tags':{k:v for k,v in e.get('tags',{}).items() if k in KEEP}}
