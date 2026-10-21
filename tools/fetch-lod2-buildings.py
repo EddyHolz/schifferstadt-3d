@@ -29,7 +29,7 @@ scheme=config['selection_hierarchy'][-1]['urls']['data']['scheme']
 if not scheme.startswith('https://geobasis-rlp.de/data/geb3dlo/'):raise ValueError('Unexpected official data origin')
 rawdir=ROOT/'research-cache/lod2';rawdir.mkdir(parents=True,exist_ok=True)
 origins={key:utm(*ll) for key,ll in SITES.items()};sites={key:[] for key in SITES};sources=[]
-for east,north in [(454,5470),(454,5469),(455,5469)]:
+for east,north in [(454,5470),(454,5468)]:
  url=scheme.replace('{kachel,0,3}',str(east)).replace('{kachel,3}',str(north))
  filename=rawdir/url.rsplit('/',1)[1]
  with urlopen(Request(url,headers={'User-Agent':'SchifferstadtExteriorResearch/0.3'}),timeout=120) as response:
@@ -37,9 +37,10 @@ for east,north in [(454,5470),(454,5469),(455,5469)]:
   with filename.open('wb') as f:
    while block:=response.read(1024*1024):
     size+=len(block)
-    if size>100*1024*1024:raise ValueError('Tile exceeds research download budget')
+    if size>512*1024*1024:raise ValueError('Tile exceeds research download budget')
     f.write(block)
  print('LOD2_TILE='+json.dumps({'url':url,'bytes':size}),flush=True);sources.append(url)
+ print('LOD2_HEADER='+filename.open('rb').read(2048).decode('utf-8',errors='replace').replace('\n',' '),flush=True)
  for event,element in ET.iterparse(filename,events=('end',)):
   if element.tag.rsplit('}',1)[-1]!='Building':continue
   face_data=[]
